@@ -3,26 +3,8 @@
 A containerized monitoring and centralized logging practical built with Docker Compose on WSL Ubuntu.
 
 ## Architecture
+<img width="576" height="387" alt="image" src="https://github.com/user-attachments/assets/08e23a73-ee09-4371-821d-191c50303ecf" />
 
-```text
-Windows Browser
-      |
-      +--------------------+
-      |                    |
-      v                    v
-  Grafana :3000        Kibana :5601
-      |                    |
-      v                    v
-Prometheus :9091    Elasticsearch :9200
-      ^                    ^
-      |                    |
-Node Exporter :9100    Logstash :5044
-                           ^
-                           |
-                        Filebeat
-                           ^
-                           |
-                     Linux /var/log
 Technologies
 Component	Purpose	Port
 Node Exporter	System metrics	9100
