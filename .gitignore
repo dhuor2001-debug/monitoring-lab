@@ -1,0 +1,17 @@
+# Grafana / Elasticsearch data
+grafana-data/
+elasticsearch-data/
+
+# Logs
+*.log
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example

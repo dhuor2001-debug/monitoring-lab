@@ -1,0 +1,79 @@
+services:
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    depends_on:
+      - node-exporter
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.1.3
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+  logstash:
+    image: docker.elastic.co/logstash/logstash:9.1.3
+    container_name: logstash
+    ports:
+      - "5044:5044"
+    volumes:
+      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.1.3
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:9.1.3
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/log:/var/log:ro
+    depends_on:
+      - logstash
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+  elasticsearch-data:
