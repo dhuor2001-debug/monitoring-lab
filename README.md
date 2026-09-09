@@ -2,20 +2,29 @@
 
 A containerized monitoring and centralized logging practical built with Docker Compose on WSL Ubuntu.
 
-## Architecture
-<img width="576" height="387" alt="image" src="https://github.com/user-attachments/assets/08e23a73-ee09-4371-821d-191c50303ecf" />
+## Overview
 
-Technologies
-Component	Purpose	Port
-Node Exporter	System metrics	9100
-Prometheus	Metrics collection and storage	9091
-Grafana	Monitoring dashboard and alerting	3000
-Filebeat	Linux log collection	—
-Logstash	Log processing	5044
-Elasticsearch	Log storage and indexing	9200
-Kibana	Log search and visualization	5601
-Docker Compose	Container orchestration	—
-Project Structure
+This project demonstrates end-to-end observability by combining system monitoring with centralized logging. It includes Prometheus for metrics collection, Grafana for visualization and alerting, and the ELK stack (Elasticsearch, Logstash, Kibana) for log aggregation and analysis.
+
+## Architecture
+
+<img width="576" height="387" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/08e23a73-ee09-4371-821d-191c50303ecf" />
+
+### Technology Stack
+
+| Component | Purpose | Port |
+|-----------|---------|------|
+| Node Exporter | System metrics collection | 9100 |
+| Prometheus | Metrics storage & time-series database | 9091 |
+| Grafana | Monitoring dashboard & alerting | 3000 |
+| Filebeat | Linux log collection & forwarding | — |
+| Logstash | Log processing & transformation | 5044 |
+| Elasticsearch | Log storage & indexing | 9200 |
+| Kibana | Log visualization & search | 5601 |
+
+## Project Structure
+
+```
 monitoring-lab/
 ├── README.md
 ├── .gitignore
@@ -23,175 +32,224 @@ monitoring-lab/
 ├── prometheus/
 │   └── prometheus.yml
 ├── grafana/
+│   └── dashboards/
 └── elk/
     ├── filebeat/
     │   └── filebeat.yml
     └── logstash/
         └── pipeline/
             └── logstash.conf
-Prometheus
+```
 
-Prometheus scrapes itself and Node Exporter every 15 seconds.
+## Monitoring Pipeline
 
-Node Exporter target:
+### Prometheus
 
-node-exporter:9100
+Prometheus scrapes metrics from Node Exporter and itself every 15 seconds.
 
-Prometheus is available from the host at:
+**Node Exporter target:**
+```
+http://node-exporter:9100
+```
 
+**Prometheus endpoint (from host):**
+```
 http://localhost:9091
-Grafana Dashboard
+```
 
-Grafana connects to Prometheus using:
+### Grafana Dashboard
 
+Grafana connects to Prometheus at:
+```
 http://prometheus:9090
+```
 
-Dashboard panels:
+**Dashboard Metrics:**
 
-CPU Usage
-100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
-Memory Usage
-100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
-Disk Usage
-100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})
-System Uptime
-time() - node_boot_time_seconds
-ELK Stack
+| Metric | PromQL Query |
+|--------|--------------|
+| CPU Usage | `100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)` |
+| Memory Usage | `100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)` |
+| Disk Usage | `100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs\|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs\|overlay"})` |
+| System Uptime | `time() - node_boot_time_seconds` |
 
-Linux logs are collected from:
+## Logging Pipeline
 
+### ELK Stack Configuration
+
+**Log Source:**
+```
 /var/log/*.log
+```
 
-Filebeat forwards logs to:
-
+**Filebeat → Logstash:**
+```
 logstash:5044
+```
 
-Logstash sends the events to Elasticsearch.
-
-Log indices use:
-
+**Log Index Pattern:**
+```
 linux-logs-YYYY.MM.dd
+```
 
-Kibana uses the Data View:
-
+**Kibana Data View:**
+```
 linux-logs-*
-Running the Project
+```
 
-Start the stack:
+## Quick Start
 
+### 1. Start the Stack
+
+```bash
 docker compose up -d
+```
 
-Check the containers:
+### 2. Verify Containers
 
+```bash
 docker compose ps
+```
 
-Stop the stack:
+### 3. Stop the Stack
 
+```bash
 docker compose down
-Service URLs
-Prometheus: http://localhost:9091
-Node Exporter: http://localhost:9100
-Grafana: http://localhost:3000
-Elasticsearch: http://localhost:9200
-Kibana: http://localhost:5601
-Verification
+```
 
-Check Node Exporter:
+## Service URLs
 
+| Service | URL |
+|---------|-----|
+| Prometheus | http://localhost:9091 |
+| Node Exporter | http://localhost:9100 |
+| Grafana | http://localhost:3000 |
+| Elasticsearch | http://localhost:9200 |
+| Kibana | http://localhost:5601 |
+
+## Verification & Testing
+
+### Check Node Exporter Metrics
+
+```bash
 curl http://localhost:9100/metrics
+```
 
-Check Elasticsearch:
+### Check Elasticsearch Health
 
+```bash
 curl http://localhost:9200
+```
 
-Check Elasticsearch indices:
+### View Elasticsearch Indices
 
+```bash
 curl "http://localhost:9200/_cat/indices?v"
+```
 
-Check containers:
+### Test Logging
 
-docker compose ps
-Log Testing
-
-Generate a Linux log event:
-
+1. Generate a log entry:
+```bash
 logger "Monitoring Lab test log - ELK pipeline verification"
+```
 
-Then open Kibana:
+2. View in Kibana:
+   - Navigate to http://localhost:5601
+   - Go to **Discover**
+   - Select data view: `linux-logs-*`
+   - Refresh to see the new log entry
 
-http://localhost:5601
+## Alerting
 
-Go to Discover, select:
+### Grafana Availability Alert
 
-linux-logs-*
+**Alert Rule:**
+- Metric: `up{job="node-exporter"}`
+- Condition: `Last() < 1`
 
-and refresh the results.
+**Alert States:**
+- Node Exporter **available**: `up = 1`
+- Node Exporter **unavailable**: `up = 0`
 
-Alerting
-
-A basic Grafana availability alert can use:
-
-up{job="node-exporter"}
-
-Condition:
-
-Last() is below 1
-
-When Node Exporter is available:
-
-up = 1
-
-When Node Exporter is unavailable:
-
-up = 0
-Evidence Screenshots
-
-The practical includes screenshots demonstrating:
-
-Architecture
-Prometheus targets
-Grafana monitoring dashboard
-Kibana Discover with Linux logs
-Grafana alert configuration
-Learning Outcomes
+## Learning Outcomes
 
 This practical demonstrates:
 
-Docker Compose
-Node Exporter
-Prometheus
-Grafana
-Filebeat
-Logstash
-Elasticsearch
-Kibana
-System monitoring
-Centralized logging
-Basic alerting
-End-to-end observability
-Final Pipelines
-Monitoring
+- ✓ Docker Compose containerization
+- ✓ System metrics collection (Node Exporter)
+- ✓ Metrics storage & retrieval (Prometheus)
+- ✓ Metrics visualization (Grafana)
+- ✓ Log collection (Filebeat)
+- ✓ Log processing & transformation (Logstash)
+- ✓ Log storage & indexing (Elasticsearch)
+- ✓ Log visualization & search (Kibana)
+- ✓ System monitoring best practices
+- ✓ Centralized logging architecture
+- ✓ Alert configuration
+- ✓ End-to-end observability
+
+## Observability Pipelines
+
+### Monitoring Pipeline
+```
 Linux System
     ↓
-Node Exporter
+Node Exporter (metrics)
     ↓
-Prometheus
+Prometheus (storage)
     ↓
-Grafana
+Grafana (visualization)
     ↓
 Alerting
-Logging
-Linux Logs
-    ↓
-Filebeat
-    ↓
-Logstash
-    ↓
-Elasticsearch
-    ↓
-Kibana
-Author
+```
 
-Monitoring Lab Practical
+### Logging Pipeline
+```
+Linux Logs (/var/log/*.log)
+    ↓
+Filebeat (collection)
+    ↓
+Logstash (processing)
+    ↓
+Elasticsearch (indexing & storage)
+    ↓
+Kibana (visualization & search)
+```
+
+## Technical Details
+
+### Prometheus Configuration
+- Scrape interval: 15 seconds
+- Targets: Node Exporter, Prometheus (self)
+
+### Filebeat & Logstash
+- Input paths: `/var/log/*.log`
+- Output: Elasticsearch with daily index rotation
+
+### Grafana
+- Default datasource: Prometheus
+- Supported alert conditions: Threshold-based with customizable intervals
+
+## Prerequisites
+
+- Docker & Docker Compose installed
+- WSL Ubuntu (or any Linux environment)
+- 2GB+ available disk space for logs and metrics
+
+## Notes
+
+- All containers communicate via Docker network
+- Logs are indexed daily for efficient retrieval
+- Prometheus data is ephemeral by default (configure persistent volumes for production)
+- Elasticsearch requires adequate memory allocation
+
+## Author
+
+**Monitoring Lab Practical**
 
 Built and tested using Windows, WSL Ubuntu, Docker, and Docker Compose.
+
+---
+
+*Last updated: 2026*
